@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "project": {
+    "catalog": "prod",
+    "initializedAt": "2026-07-30T20:37:04.826Z",
+    "merchantDisplayName": "Yugav Bhatia",
+    "merchantId": "acct_1Tz0YyEWcMGj1uXM",
+    "projectId": "project_61V8Oemo1V5JjUXEx16V8OWLQqSQW0ErhWHs5TDlgGRc",
+    "projectName": "id-ladder"
+  },
+  "providers": {
+    "auth0": {
+      "accountRequestId": "facctrq_61V8Ogxmir8wXOiaE16V8OWLQqSQW0ErhWHs5TDlgRMO",
+      "configuration": {
+        "locality": "us",
+        "naming_prefix": "idladder-yb"
+      },
+      "linkedAt": "2026-07-30T20:39:25.134Z",
+      "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",
+      "providerName": "Auth0",
+      "redirectUrl": null,
+      "requestedAt": "2026-07-30T20:39:25.133Z",
+      "status": "complete"
+    },
+    "railway": {
+      "accountRequestId": "facctrq_61V8Oi5MOpdWRb7Qw16V8OWLQqSQW0ErhWHs5TDlgLSq",
+      "configuration": {},
+      "linkedAt": "2026-07-30T20:40:30.525Z",
+      "providerId": "prvdr_61UK2uWsoydL7tUBp57Fg",
+      "providerName": "Railway",
+      "redirectUrl": null,
+      "requestedAt": "2026-07-30T20:40:30.524Z",
+      "status": "complete"
+    }
+  },
+  "resources": {
+    "auth0-plan": {
+      "configuration": {},
+      "createdAt": "2026-07-30T20:39:28.589Z",
+      "lastRevealedAt": "2026-07-30T20:39:28.727Z",
+      "lastStatus": "complete",
+      "name": "auth0-plan",
+      "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",
+      "providerName": "Auth0",
+      "resourceId": "fres_61V8Oh3zCaAZhYsqp16V8OWLQqSQW0ErhWHs5TDlgMwS",
+      "serviceId": "free"
+    },
+    "idladder-live": {
+      "configuration": {
+        "name": "ID-Ladder",
+        "callbacks": [
+          "https://id-ladder-production.up.railway.app",
+          "https://id-ladder-production.up.railway.app/callback",
+          "http://localhost:3100",
+          "http://localhost:3100/callback"
+        ],
+        "allowed_logout_urls": [
+          "https://id-ladder-production.up.railway.app",
+          "http://localhost:3100"
+        ],
+        "web_origins": [
+          "https://id-ladder-production.up.railway.app",
+          "http://localhost:3100"
+        ]
+      },
+      "createdAt": "2026-07-30T21:44:01.970Z",
+      "lastRevealedAt": "2026-07-30T21:44:02.159Z",
+      "lastStatus": "complete",
+      "name": "idladder-live",
+      "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",
+      "providerName": "Auth0",
+      "resourceId": "fres_61V8PhWgg0rtmVGy416V8OWLQqSQW0ErhWHs5TDlgNRg",
+      "serviceId": "client"
+    },
+    "railway-hosting": {
+      "configuration": {},
+      "createdAt": "2026-07-30T20:40:33.336Z",
+      "lastRevealedAt": null,
+      "lastStatus": "errored",
+      "name": "railway-hosting",
+      "providerId": "prvdr_61UK2uWsoydL7tUBp57Fg",
+      "providerName": "Railway",
+      "resourceId": "fres_61V8Oi8jolLxJJ3BL16V8OWLQqSQW0ErhWHs5TDlg8f2",
+      "serviceId": "hosting"
+    },
+    "railway-hosting-2": {
+      "configuration": {},
+      "createdAt": "2026-07-30T20:44:03.825Z",
+      "lastRevealedAt": "2026-07-30T20:44:03.993Z",
+      "lastStatus": "complete",
+      "name": "railway-hosting-2",
+      "providerId": "prvdr_61UK2uWsoydL7tUBp57Fg",
+      "providerName": "Railway",
+      "resourceId": "fres_61V8OlLCdzK5xvZMl16V8OWLQqSQW0ErhWHs5TDlgREW",
+      "serviceId": "hosting"
+    },
+    "railway-plan": {
+      "configuration": {},
+      "createdAt": "2026-07-30T20:40:31.823Z",
+      "lastRevealedAt": "2026-07-30T20:40:31.983Z",
+      "lastStatus": "complete",
+      "name": "railway-plan",
+      "providerId": "prvdr_61UK2uWsoydL7tUBp57Fg",
+      "providerName": "Railway",
+      "resourceId": "fres_61V8Oi6dXwyFTYYLD16V8OWLQqSQW0ErhWHs5TDlgPCi",
+      "serviceId": "free"
+    }
+  }
+}

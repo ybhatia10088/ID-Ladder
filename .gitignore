@@ -139,7 +139,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-.projects/state.local.json
 
 # Local SQLite database — rebuilt from scratch by `npm run seed`
 server/data/
