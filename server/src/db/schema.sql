@@ -9,7 +9,7 @@
 
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
   id               TEXT PRIMARY KEY,
   name             TEXT NOT NULL,
   -- Two-letter state code, or 'US' for federally issued records.
@@ -26,7 +26,7 @@ CREATE TABLE documents (
 -- verified homeless services provider can satisfy by attestation instead of
 -- the client producing the physical document (e.g. proof of residency via a
 -- shelter letter). It does NOT mean the prerequisite is optional.
-CREATE TABLE prerequisites (
+CREATE TABLE IF NOT EXISTS prerequisites (
   document_id          TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   requires_document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   attestable           INTEGER NOT NULL DEFAULT 0,
@@ -36,7 +36,7 @@ CREATE TABLE prerequisites (
   CHECK (document_id <> requires_document_id)
 );
 
-CREATE TABLE organizations (
+CREATE TABLE IF NOT EXISTS organizations (
   id                     TEXT PRIMARY KEY,
   auth0_org_id           TEXT UNIQUE,
   name                   TEXT NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE organizations (
   standing_jurisdictions TEXT NOT NULL DEFAULT '[]'
 );
 
-CREATE TABLE cases (
+CREATE TABLE IF NOT EXISTS cases (
   id                   TEXT PRIMARY KEY,
   organization_id      TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   -- Caseworker-facing reference, not PII.
@@ -59,7 +59,7 @@ CREATE TABLE cases (
   created_at           TEXT NOT NULL
 );
 
-CREATE TABLE case_holdings (
+CREATE TABLE IF NOT EXISTS case_holdings (
   case_id     TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
 
@@ -68,7 +68,7 @@ CREATE TABLE case_holdings (
 
 -- An attestation is scoped to the jurisdiction it is valid in, because an
 -- org's standing in one state does not carry into another.
-CREATE TABLE attestations (
+CREATE TABLE IF NOT EXISTS attestations (
   id                    TEXT PRIMARY KEY,
   case_id               TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   document_id           TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -78,7 +78,7 @@ CREATE TABLE attestations (
   created_at            TEXT NOT NULL
 );
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id                       TEXT PRIMARY KEY,
   case_id                  TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   document_id              TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -93,8 +93,8 @@ CREATE TABLE payments (
   CHECK (status IN ('requires_payment', 'processing', 'succeeded', 'failed', 'refunded', 'waived'))
 );
 
-CREATE INDEX idx_prerequisites_document ON prerequisites(document_id);
-CREATE INDEX idx_cases_organization ON cases(organization_id);
-CREATE INDEX idx_case_holdings_case ON case_holdings(case_id);
-CREATE INDEX idx_attestations_case ON attestations(case_id);
-CREATE INDEX idx_payments_case ON payments(case_id);
+CREATE INDEX IF NOT EXISTS idx_prerequisites_document ON prerequisites(document_id);
+CREATE INDEX IF NOT EXISTS idx_cases_organization ON cases(organization_id);
+CREATE INDEX IF NOT EXISTS idx_case_holdings_case ON case_holdings(case_id);
+CREATE INDEX IF NOT EXISTS idx_attestations_case ON attestations(case_id);
+CREATE INDEX IF NOT EXISTS idx_payments_case ON payments(case_id);
