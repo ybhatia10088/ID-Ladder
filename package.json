@@ -13,6 +13,7 @@
     "dev:client": "npm run dev --workspace client",
     "build": "npm run build --workspace client && npm run build --workspace server",
     "start": "npm start --workspace server",
+    "seed": "npm run seed --workspace server",
     "typecheck": "npm run typecheck --workspace client && npm run typecheck --workspace server"
   },
   "devDependencies": {

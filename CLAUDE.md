@@ -56,6 +56,7 @@ npm install          # installs root + client + server (npm workspaces)
 npm run dev          # runs client (5173) and server (3000) together
 npm run build        # builds client, then compiles server
 npm start            # production: single process on PORT (default 3000)
+npm run seed         # drops and rebuilds the SQLite demo database
 npm run typecheck    # typechecks both workspaces
 ```
 
@@ -63,9 +64,40 @@ npm run typecheck    # typechecks both workspaces
 `PORT=3100 npm run dev` moves both consistently. Use it when something else is
 already on `3000`.
 
+## Jurisdiction rules (the core domain constraint)
+
+A state's vital records office only holds records for people **born in that
+state**, and a state's fee-waiver program generally reaches only **its own
+records**. An organization's verified standing is likewise per-state. So a
+California-verified provider cannot attest for a Michigan-held birth record,
+and the client must be routed to an organization with Michigan standing.
+`organizations.standing_jurisdictions` and `attestations.valid_in_jurisdiction`
+exist to enforce exactly this — do not collapse them into a global flag.
+
+Fee waivers almost always require a **verified homeless services provider** to
+sign an affidavit or submit the request. The one researched exception is the
+Washington identicard (RCW 46.20.195), which turns on self-attestation. Do not
+generalize either way without checking the seed comments.
+
+## Research discipline
+
+Every seeded fee and waiver rule carries an inline comment with the source URL
+it came from. When adding or changing one:
+
+- Cite a real, current source. Prefer the issuing agency's own page.
+- If a figure cannot be verified, set it to `NULL` and comment it `UNVERIFIED`.
+  **Never guess a government fee.** A gap is better than a fabrication.
+- Fees change. Re-check before relying on a figure; the CA birth record fee is
+  already scheduled to drop $2 in 2027.
+
 ## Status
 
 Milestone 1 complete: client/server scaffold, `GET /api/health`, dev proxy,
-combined dev script, static serving in production. Database, Auth0, and Stripe
-are declared stack but **not yet wired up** — do not add them ahead of their
-milestone.
+combined dev script, static serving in production.
+
+Milestone 2 complete: SQLite schema at [server/src/db/schema.sql](server/src/db/schema.sql),
+cited seed data at [server/src/db/seed.ts](server/src/db/seed.ts), and an
+idempotent `npm run seed`.
+
+Not built yet — **do not build ahead of the milestone**: resolver logic, API
+routes, Auth0 wiring, Stripe wiring.
