@@ -82,6 +82,7 @@ type ChainProps = {
   paidDocumentId?: string | null;
   onVouch: (documentId: string) => void;
   onPay: (documentId: string) => void;
+  onViewAffidavit?: (documentId: string) => void;
 };
 
 export default function Chain({
@@ -93,6 +94,7 @@ export default function Chain({
   paidDocumentId,
   onVouch,
   onPay,
+  onViewAffidavit,
 }: ChainProps) {
   return (
     <section className="chain">
@@ -199,6 +201,15 @@ export default function Chain({
                     disabled={busy}
                   >
                     {busy ? "Signing…" : "Vouch for this client"}
+                  </button>
+                ) : null}
+
+                {step.label === "WAIVED" && onViewAffidavit ? (
+                  <button
+                    className="btn btn--ghost btn--small"
+                    onClick={() => onViewAffidavit(step.document_id)}
+                  >
+                    View affidavit
                   </button>
                 ) : null}
 

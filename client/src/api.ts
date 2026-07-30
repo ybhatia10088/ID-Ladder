@@ -71,6 +71,24 @@ export type Graph = {
   };
 };
 
+export type Affidavit = {
+  id: string;
+  created_at: string;
+  attested_by_user_id: string;
+  attested_by_name: string | null;
+  attested_by_email: string | null;
+  valid_in_jurisdiction: string;
+  client_ref: string;
+  document_name: string;
+  document_jurisdiction: string;
+  fee_cents: number | null;
+  source_url: string | null;
+  source_note: string | null;
+  waiver_statute: string | null;
+  organization_name: string;
+  standing_jurisdictions: string[];
+};
+
 export type CaseSummary = {
   id: string;
   client_ref: string;
@@ -165,6 +183,12 @@ export const api = {
       `/api/cases/${encodeURIComponent(caseId)}/pay`,
       token,
       { method: "POST", body: JSON.stringify({ document_id: documentId }) },
+    ),
+
+  affidavit: (token: string, caseId: string, documentId: string) =>
+    request<Affidavit>(
+      `/api/cases/${encodeURIComponent(caseId)}/affidavit/${encodeURIComponent(documentId)}`,
+      token,
     ),
 
   subscribe: (token: string, organizationId: string) =>

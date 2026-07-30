@@ -51,25 +51,35 @@ export function bootstrap(db: BetterSqlite3.Database): BootstrapResult {
   const documentColumns = new Set(
     (db.prepare(`PRAGMA table_info(documents)`).all() as { name: string }[]).map((c) => c.name),
   );
-  for (const column of ["source_url", "source_note"]) {
+  for (const column of ["source_url", "source_note", "waiver_statute"]) {
     if (!documentColumns.has(column)) {
       db.exec(`ALTER TABLE documents ADD COLUMN ${column} TEXT`);
+    }
+  }
+
+  const attestationColumns = new Set(
+    (db.prepare(`PRAGMA table_info(attestations)`).all() as { name: string }[]).map((c) => c.name),
+  );
+  for (const column of ["attested_by_name", "attested_by_email"]) {
+    if (!attestationColumns.has(column)) {
+      db.exec(`ALTER TABLE attestations ADD COLUMN ${column} TEXT`);
     }
   }
 
   // Reference data: keep in sync with seed-data.ts.
   const upsertDocument = db.prepare(
     `INSERT INTO documents (id, name, jurisdiction, fee_cents, waiver_available,
-                            source_url, source_note)
+                            source_url, source_note, waiver_statute)
      VALUES (@id, @name, @jurisdiction, @fee_cents, @waiver_available,
-             @source_url, @source_note)
+             @source_url, @source_note, @waiver_statute)
      ON CONFLICT(id) DO UPDATE SET
        name             = excluded.name,
        jurisdiction     = excluded.jurisdiction,
        fee_cents        = excluded.fee_cents,
        waiver_available = excluded.waiver_available,
        source_url       = excluded.source_url,
-       source_note      = excluded.source_note`,
+       source_note      = excluded.source_note,
+       waiver_statute   = excluded.waiver_statute`,
   );
   // Prerequisites are pure reference data that nothing references, so a full
   // replace is the simplest way to drop edges removed from seed-data.ts.

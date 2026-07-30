@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 
+import Affidavit, { useAffidavit } from "./Affidavit";
 import Chain from "./Chain";
 import Controls from "./Controls";
 import GraphStats from "./GraphStats";
@@ -96,6 +97,11 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   const token = useCallback(() => getAccessTokenSilently(), [getAccessTokenSilently]);
+
+  const affidavit = useAffidavit(async (documentId: string) => {
+    if (!activeCaseId) throw new Error("No case open");
+    return api.affidavit(await token(), activeCaseId, documentId);
+  });
 
   useEffect(() => {
     if (!paidDocumentId) return;
@@ -211,6 +217,10 @@ export default function App() {
 
   return (
     <div className="page">
+      {affidavit.record ? (
+        <Affidavit record={affidavit.record} onClose={affidavit.close} />
+      ) : null}
+
       <header className="masthead">
         <Wordmark />
         <div className="masthead-right">
@@ -290,6 +300,7 @@ export default function App() {
             paidDocumentId={paidDocumentId}
             onVouch={(id) => void onVouch(id)}
             onPay={(id) => void onPay(id)}
+            onViewAffidavit={affidavit.open}
           />
 
           <GraphStats graph={graph} />

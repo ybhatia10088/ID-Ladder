@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS documents (
   -- carry the citation out of the code comments and in front of users.
   source_url       TEXT,
   source_note      TEXT,
+  -- The statute a fee waiver rests on, cited verbatim on the affidavit.
+  waiver_statute   TEXT,
 
   CHECK (fee_cents IS NULL OR (typeof(fee_cents) = 'integer' AND fee_cents >= 0)),
   CHECK (waiver_available IN (0, 1))
@@ -88,6 +90,10 @@ CREATE TABLE IF NOT EXISTS attestations (
   document_id           TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   organization_id       TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   attested_by_user_id   TEXT NOT NULL,
+  -- Captured at signing: an affidavit records who signed it at the time, not
+  -- whatever that account happens to be called later.
+  attested_by_name      TEXT,
+  attested_by_email     TEXT,
   valid_in_jurisdiction TEXT NOT NULL,
   created_at            TEXT NOT NULL
 );

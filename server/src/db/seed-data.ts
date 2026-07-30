@@ -28,6 +28,8 @@ export type DocumentRow = {
   source_url: string;
   /** One plain-language line naming the fee and the statute behind any waiver. */
   source_note: string;
+  /** Statute the waiver rests on, cited on the affidavit. Null when no waiver. */
+  waiver_statute: string | null;
 };
 
 export const documents: DocumentRow[] = [
@@ -45,6 +47,7 @@ export const documents: DocumentRow[] = [
       "https://oig.ssa.gov/scam-alerts/2026-03-10-ssa-provides-new-and-replacement-social-security-cards-for-free/",
     source_note:
       "Free. The Social Security Administration charges nothing for an original, replacement, or corrected card.",
+    waiver_statute: null,
   },
 
   // ------------------------------------------------------------- CALIFORNIA
@@ -66,6 +69,8 @@ export const documents: DocumentRow[] = [
       "https://www.cdph.ca.gov/Programs/CHSI/Pages/Vital-Records-Fees.aspx",
     source_note:
       "$31 per copy from the State Registrar, effective 1 January 2026 under AB 64. The fee is waived for people experiencing homelessness under California AB 1733 / AB 2490 (Health & Safety Code 103577), which covers up to three copies a year.",
+    waiver_statute:
+      "California Health & Safety Code section 103577, added by AB 1733 (2014) and extended to the State Registrar by AB 2490 (2018)",
   },
   {
     id: "ca-birth-certificate-county",
@@ -85,6 +90,8 @@ export const documents: DocumentRow[] = [
       "https://www.cdph.ca.gov/Programs/RPHO/Pages/All-Local-Health-Jurisdiction-Letters-Notices/25-05_2026-Fee-Schedule_11-03-2025.aspx",
     source_note:
       "$31 per copy, the same statutory fee as the state copy. Waived under California AB 1733 (Health & Safety Code 103577); the request goes to the county where the birth happened.",
+    waiver_statute:
+      "California Health & Safety Code section 103577, added by AB 1733 (2014)",
   },
   {
     id: "ca-id-card",
@@ -103,6 +110,8 @@ export const documents: DocumentRow[] = [
       "https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/licensing-fees/",
     source_note:
       "$40 for a regular ID card. The DMV issues it free to people experiencing homelessness when a government agency or a 501(c)(3) signs form DL 933, which is valid for 90 days.",
+    waiver_statute:
+      "California Vehicle Code section 14902 and the Department of Motor Vehicles No-Fee Identification Card programme (form DL 933)",
   },
   {
     id: "ca-reduced-fee-id-card",
@@ -117,6 +126,7 @@ export const documents: DocumentRow[] = [
       "https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/licensing-fees/",
     source_note:
       "$11 for applicants who qualify on income and submit form DL 937. This is the reduced-fee programme, separate from the no-fee card.",
+    waiver_statute: null,
   },
   {
     id: "ca-proof-of-residency",
@@ -131,6 +141,7 @@ export const documents: DocumentRow[] = [
       "https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/identification-id-cards/",
     source_note:
       "No fee. The DMV asks for two documents showing a California address for a first-time REAL ID.",
+    waiver_statute: null,
   },
 
   // --------------------------------------------------------------- MICHIGAN
@@ -154,6 +165,8 @@ export const documents: DocumentRow[] = [
       "https://www.michigan.gov/mdhhs/doing-business/vitalrecords/additonal-information/fees_1",
     source_note:
       "$34 for the first certified copy from MDHHS. Waived under Michigan HB 4853 (2019) for Category 1 homeless applicants born in Michigan, on a verification letter from a public service agency.",
+    waiver_statute:
+      "Michigan HB 4853 (2019), amending the Public Health Code, Act 368 of 1978",
   },
   {
     id: "mi-birth-certificate-county",
@@ -174,6 +187,8 @@ export const documents: DocumentRow[] = [
       "http://www.miboscoc.com/uploads/2/5/7/2/25729897/homeless_vital_documents_-_final.pdf",
     source_note:
       "There is no statewide fee for a county copy — clerks charge roughly $5 to $34 and each office runs its own process. Providers pay the clerk and reclaim the cost on form MDHHS-5832.",
+    waiver_statute:
+      "Michigan HB 4853 (2019); county copies are reimbursed under PA 67 of 2019, section 456",
   },
   {
     id: "mi-id-card",
@@ -192,6 +207,8 @@ export const documents: DocumentRow[] = [
       "https://michiganlegalhelp.org/resources/ids-and-name-change/getting-michigan-id-card",
     source_note:
       "$10 standard fee. The Secretary of State issues it free to people experiencing homelessness on a Homeless Verification Letter from a public service agency plus an HMIS card.",
+    waiver_statute:
+      "Michigan SB 404 (2017), implemented by the Secretary of State in April 2018",
   },
   {
     id: "mi-proof-of-residency",
@@ -206,6 +223,7 @@ export const documents: DocumentRow[] = [
       "https://michiganlegalhelp.org/resources/ids-and-name-change/getting-michigan-id-card",
     source_note:
       "No fee. The Secretary of State asks for two documents showing a Michigan address, dated within the last 90 days.",
+    waiver_statute: null,
   },
 
   // ------------------------------------------------------------- WASHINGTON
@@ -229,6 +247,8 @@ export const documents: DocumentRow[] = [
       "https://doh.wa.gov/licenses-permits-and-certificates/vital-records/ordering-vital-record/birth-record",
     source_note:
       "$25 per copy. Washington RCW 70.58A.560 bars the department from charging homeless residents, but a government agency or homeless service provider has to submit the request on letterhead, and it covers only people born and living in Washington.",
+    waiver_statute:
+      "Washington RCW 70.58A.560, applying the definition of homelessness in RCW 43.185C.010",
   },
   {
     id: "wa-id-card",
@@ -248,6 +268,8 @@ export const documents: DocumentRow[] = [
       "https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees",
     source_note:
       "$61 for a six-year card, $81 for eight. Washington RCW 46.20.195 gives one free identicard to a homeless resident — notably without requiring a provider to sign.",
+    waiver_statute:
+      "Washington RCW 46.20.195, enacted by SB 5815 (2022)",
   },
   {
     id: "wa-reduced-fee-id-card",
@@ -262,6 +284,7 @@ export const documents: DocumentRow[] = [
       "https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees",
     source_note:
       "$5 at-cost card for applicants on state assistance, on WIC, leaving certain facilities, or under 25.",
+    waiver_statute: null,
   },
   {
     id: "wa-proof-of-residency",
@@ -275,6 +298,7 @@ export const documents: DocumentRow[] = [
       "https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees",
     source_note:
       "No fee. Evidentiary documents, not a record the state issues.",
+    waiver_statute: null,
   },
 ];
 

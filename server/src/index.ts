@@ -309,20 +309,66 @@ app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
     if (!existing) {
       db.prepare(
         `INSERT INTO attestations (id, case_id, document_id, organization_id,
-                                   attested_by_user_id, valid_in_jurisdiction, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                   attested_by_user_id, attested_by_name,
+                                   attested_by_email, valid_in_jurisdiction, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         randomUUID(),
         caseRecord.id,
         document.id,
         organization.id,
         req.user!.sub,
+        req.user!.name ?? null,
+        req.user!.email ?? null,
         document.jurisdiction,
         new Date().toISOString(),
       );
     }
 
     res.json(buildPlan(db, caseRecord.id, organization.id, standing));
+  } finally {
+    db.close();
+  }
+});
+
+/**
+ * Everything printed on a signed affidavit. Scoped to the caller's
+ * organization, so an affidavit for someone else's case is a 404.
+ */
+app.get("/api/cases/:id/affidavit/:documentId", requireAuth, (req, res) => {
+  const db = openDatabase();
+  try {
+    const record = db
+      .prepare(
+        `SELECT a.id, a.created_at, a.attested_by_user_id, a.attested_by_name,
+                a.attested_by_email, a.valid_in_jurisdiction,
+                c.client_ref, c.birth_jurisdiction, c.current_jurisdiction,
+                d.name AS document_name, d.jurisdiction AS document_jurisdiction,
+                d.fee_cents, d.source_url, d.source_note, d.waiver_statute,
+                o.name AS organization_name, o.standing_jurisdictions
+         FROM attestations a
+         JOIN cases c ON c.id = a.case_id
+         JOIN documents d ON d.id = a.document_id
+         JOIN organizations o ON o.id = a.organization_id
+         WHERE a.case_id = ? AND a.document_id = ? AND c.organization_id = ?
+         ORDER BY a.created_at DESC
+         LIMIT 1`,
+      )
+      .get(req.params.id, req.params.documentId, req.organization!.id) as
+      | Record<string, unknown>
+      | undefined;
+
+    if (!record) {
+      res.status(404).json({ error: "No signed affidavit for this document" });
+      return;
+    }
+
+    res.json({
+      ...record,
+      standing_jurisdictions: JSON.parse(
+        (record.standing_jurisdictions as string | null) ?? "[]",
+      ) as string[],
+    });
   } finally {
     db.close();
   }
