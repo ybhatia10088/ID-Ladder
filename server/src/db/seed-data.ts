@@ -24,6 +24,10 @@ export type DocumentRow = {
   jurisdiction: string;
   fee_cents: number | null;
   waiver_available: 0 | 1;
+  /** Issuing agency page the figure was read from — shown to users. */
+  source_url: string;
+  /** One plain-language line naming the fee and the statute behind any waiver. */
+  source_note: string;
 };
 
 export const documents: DocumentRow[] = [
@@ -37,6 +41,10 @@ export const documents: DocumentRow[] = [
     fee_cents: 0,
     // Free for everyone, so there is no waiver to apply.
     waiver_available: 0,
+    source_url:
+      "https://oig.ssa.gov/scam-alerts/2026-03-10-ssa-provides-new-and-replacement-social-security-cards-for-free/",
+    source_note:
+      "Free. The Social Security Administration charges nothing for an original, replacement, or corrected card.",
   },
 
   // ------------------------------------------------------------- CALIFORNIA
@@ -54,6 +62,10 @@ export const documents: DocumentRow[] = [
     // Registrar, capped at 3 free copies per year. See CA_BIRTH_RECORD_CONFLICT.
     // Source: https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=201720180AB2490
     waiver_available: 1,
+    source_url:
+      "https://www.cdph.ca.gov/Programs/CHSI/Pages/Vital-Records-Fees.aspx",
+    source_note:
+      "$31 per copy from the State Registrar, effective 1 January 2026 under AB 64. The fee is waived for people experiencing homelessness under California AB 1733 / AB 2490 (Health & Safety Code 103577), which covers up to three copies a year.",
   },
   {
     id: "ca-birth-certificate-county",
@@ -69,6 +81,10 @@ export const documents: DocumentRow[] = [
     // verifies homeless status. Applicant must apply to the county of birth.
     // Source: https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=201320140AB1733
     waiver_available: 1,
+    source_url:
+      "https://www.cdph.ca.gov/Programs/RPHO/Pages/All-Local-Health-Jurisdiction-Letters-Notices/25-05_2026-Fee-Schedule_11-03-2025.aspx",
+    source_note:
+      "$31 per copy, the same statutory fee as the state copy. Waived under California AB 1733 (Health & Safety Code 103577); the request goes to the county where the birth happened.",
   },
   {
     id: "ca-id-card",
@@ -83,6 +99,10 @@ export const documents: DocumentRow[] = [
     // low-income/unhoused people. DL 933 expires 90 days after issuance.
     // Source: https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/reduced-no-fee-id-card-program-information-for-organizations/
     waiver_available: 1,
+    source_url:
+      "https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/licensing-fees/",
+    source_note:
+      "$40 for a regular ID card. The DMV issues it free to people experiencing homelessness when a government agency or a 501(c)(3) signs form DL 933, which is valid for 90 days.",
   },
   {
     id: "ca-reduced-fee-id-card",
@@ -93,6 +113,10 @@ export const documents: DocumentRow[] = [
     fee_cents: 1100,
     // This IS the reduced-fee program; the separate no-fee path is ca-id-card.
     waiver_available: 0,
+    source_url:
+      "https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/licensing-fees/",
+    source_note:
+      "$11 for applicants who qualify on income and submit form DL 937. This is the reduced-fee programme, separate from the no-fee card.",
   },
   {
     id: "ca-proof-of-residency",
@@ -103,6 +127,10 @@ export const documents: DocumentRow[] = [
     // Source: https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/identification-id-cards/
     fee_cents: 0,
     waiver_available: 0,
+    source_url:
+      "https://www.dmv.ca.gov/portal/driver-licenses-identification-cards/identification-id-cards/",
+    source_note:
+      "No fee. The DMV asks for two documents showing a California address for a first-time REAL ID.",
   },
 
   // --------------------------------------------------------------- MICHIGAN
@@ -122,6 +150,10 @@ export const documents: DocumentRow[] = [
     // Records for a fee waiver and receive the record at no cost.
     // Source: http://www.miboscoc.com/uploads/2/5/7/2/25729897/homeless_vital_documents_-_final.pdf
     waiver_available: 1,
+    source_url:
+      "https://www.michigan.gov/mdhhs/doing-business/vitalrecords/additonal-information/fees_1",
+    source_note:
+      "$34 for the first certified copy from MDHHS. Waived under Michigan HB 4853 (2019) for Category 1 homeless applicants born in Michigan, on a verification letter from a public service agency.",
   },
   {
     id: "mi-birth-certificate-county",
@@ -138,6 +170,10 @@ export const documents: DocumentRow[] = [
     // of 2019, Sec. 456) pool. Applicant must apply to the county of birth.
     // Source: http://www.miboscoc.com/uploads/2/5/7/2/25729897/homeless_vital_documents_-_final.pdf
     waiver_available: 1,
+    source_url:
+      "http://www.miboscoc.com/uploads/2/5/7/2/25729897/homeless_vital_documents_-_final.pdf",
+    source_note:
+      "There is no statewide fee for a county copy — clerks charge roughly $5 to $34 and each office runs its own process. Providers pay the clerk and reclaim the cost on form MDHHS-5832.",
   },
   {
     id: "mi-id-card",
@@ -152,6 +188,10 @@ export const documents: DocumentRow[] = [
     // Letter from a public service agency plus an HMIS photo ID.
     // Source: https://www.mihomeless.org/vital-documents/
     waiver_available: 1,
+    source_url:
+      "https://michiganlegalhelp.org/resources/ids-and-name-change/getting-michigan-id-card",
+    source_note:
+      "$10 standard fee. The Secretary of State issues it free to people experiencing homelessness on a Homeless Verification Letter from a public service agency plus an HMIS card.",
   },
   {
     id: "mi-proof-of-residency",
@@ -162,6 +202,10 @@ export const documents: DocumentRow[] = [
     // Source: https://michiganlegalhelp.org/resources/ids-and-name-change/getting-michigan-id-card
     fee_cents: 0,
     waiver_available: 0,
+    source_url:
+      "https://michiganlegalhelp.org/resources/ids-and-name-change/getting-michigan-id-card",
+    source_note:
+      "No fee. The Secretary of State asks for two documents showing a Michigan address, dated within the last 90 days.",
   },
 
   // ------------------------------------------------------------- WASHINGTON
@@ -181,6 +225,10 @@ export const documents: DocumentRow[] = [
     // Sources: https://app.leg.wa.gov/RCW/default.aspx?cite=70.58A.560
     //          https://doh.wa.gov/licenses-permits-and-certificates/vital-records/vital-records-no-fee-specific-circumstances
     waiver_available: 1,
+    source_url:
+      "https://doh.wa.gov/licenses-permits-and-certificates/vital-records/ordering-vital-record/birth-record",
+    source_note:
+      "$25 per copy. Washington RCW 70.58A.560 bars the department from charging homeless residents, but a government agency or homeless service provider has to submit the request on letterhead, and it covers only people born and living in Washington.",
   },
   {
     id: "wa-id-card",
@@ -196,6 +244,10 @@ export const documents: DocumentRow[] = [
     // attestation. See ATTESTATION_MODEL note below.
     // Source: https://app.leg.wa.gov/RCW/default.aspx?cite=46.20.195
     waiver_available: 1,
+    source_url:
+      "https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees",
+    source_note:
+      "$61 for a six-year card, $81 for eight. Washington RCW 46.20.195 gives one free identicard to a homeless resident — notably without requiring a provider to sign.",
   },
   {
     id: "wa-reduced-fee-id-card",
@@ -206,6 +258,10 @@ export const documents: DocumentRow[] = [
     // Source: https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees
     fee_cents: 500,
     waiver_available: 0,
+    source_url:
+      "https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees",
+    source_note:
+      "$5 at-cost card for applicants on state assistance, on WIC, leaving certain facilities, or under 25.",
   },
   {
     id: "wa-proof-of-residency",
@@ -215,6 +271,10 @@ export const documents: DocumentRow[] = [
     // Source: https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees
     fee_cents: 0,
     waiver_available: 0,
+    source_url:
+      "https://dol.wa.gov/driver-licenses-and-permits/driver-licensing-fees",
+    source_note:
+      "No fee. Evidentiary documents, not a record the state issues.",
   },
 ];
 

@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS documents (
   -- Integer cents. NULL = unverified (see seed comments), 0 = genuinely free.
   fee_cents        INTEGER,
   waiver_available INTEGER NOT NULL DEFAULT 0,
+  -- Where the figure came from. Every fee and waiver rule is sourced; these
+  -- carry the citation out of the code comments and in front of users.
+  source_url       TEXT,
+  source_note      TEXT,
 
   CHECK (fee_cents IS NULL OR (typeof(fee_cents) = 'integer' AND fee_cents >= 0)),
   CHECK (waiver_available IN (0, 1))

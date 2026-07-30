@@ -162,6 +162,7 @@ app.get("/api/graph", requireAuth, (_req, res) => {
       documents: db
         .prepare(
           `SELECT d.id, d.name, d.jurisdiction, d.fee_cents, d.waiver_available,
+                  d.source_url, d.source_note,
                   EXISTS (SELECT 1 FROM prerequisites p WHERE p.document_id = d.id)
                     AS has_prerequisites
            FROM documents d

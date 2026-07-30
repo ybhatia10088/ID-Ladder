@@ -825,3 +825,50 @@ button {
   font-size: 13px;
   color: var(--ink-faint);
 }
+
+/* ------------------------------------------------------------ source notes */
+
+/* Footnote weight: present for anyone who wants to check the figure, never
+   competing with the document name or the fee. */
+.gate-source {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  max-width: 68ch;
+}
+
+.gate-source a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.gate-source a:hover {
+  color: var(--civic);
+}
+
+/* ------------------------------------------------------------- graph stats */
+
+.stats {
+  margin-top: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px 18px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.stats-lead {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.stats-item b {
+  color: var(--ink-muted);
+  font-weight: 700;
+}

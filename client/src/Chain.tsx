@@ -1,4 +1,4 @@
-import type { CaseSummary, Plan, PlanStep, StepLabel } from "./api";
+import type { CaseSummary, Graph, Plan, PlanStep, StepLabel } from "./api";
 import { money } from "./api";
 
 /**
@@ -74,6 +74,7 @@ function blockedExplanation(step: PlanStep, standing: string[], caseSummary?: Ca
 
 type ChainProps = {
   plan: Plan;
+  graph?: Graph | null;
   standing: string[];
   caseSummary?: CaseSummary;
   busyDocumentId: string | null;
@@ -85,6 +86,7 @@ type ChainProps = {
 
 export default function Chain({
   plan,
+  graph,
   standing,
   caseSummary,
   busyDocumentId,
@@ -112,6 +114,7 @@ export default function Chain({
         const isBlocked = step.label === "BLOCKED_JURISDICTION";
         const busy = busyDocumentId === step.document_id;
         const justPaid = paidDocumentId === step.document_id;
+        const source = graph?.documents.find((d) => d.id === step.document_id);
 
         // The spine below a step takes that step's colour once it is settled,
         // so cleared runs read as one continuous solid line.
@@ -161,6 +164,17 @@ export default function Chain({
 
                 {isBlocked ? (
                   <p className="gate-why">{blockedExplanation(step, standing, caseSummary)}</p>
+                ) : null}
+
+                {source?.source_note ? (
+                  <p className="gate-source">
+                    {source.source_note}{" "}
+                    {source.source_url ? (
+                      <a href={source.source_url} target="_blank" rel="noreferrer noopener">
+                        Source
+                      </a>
+                    ) : null}
+                  </p>
                 ) : null}
               </div>
 

@@ -3,6 +3,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 
 import Chain from "./Chain";
 import Controls from "./Controls";
+import GraphStats from "./GraphStats";
 import Total from "./Total";
 import { ApiError, api } from "./api";
 import type { CaseSummary, ControlState, Graph, Me, Plan } from "./api";
@@ -282,6 +283,7 @@ export default function App() {
 
           <Chain
             plan={plan}
+            graph={graph}
             standing={plan.controls.standing}
             caseSummary={activeCase}
             busyDocumentId={busyDocumentId}
@@ -289,6 +291,8 @@ export default function App() {
             onVouch={(id) => void onVouch(id)}
             onPay={(id) => void onPay(id)}
           />
+
+          <GraphStats graph={graph} />
         </>
       ) : (
         <div className="spinner">Opening the case…</div>

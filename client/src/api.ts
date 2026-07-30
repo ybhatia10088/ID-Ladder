@@ -57,6 +57,8 @@ export type GraphDocument = {
   jurisdiction: string;
   fee_cents: number | null;
   waiver_available: 0 | 1;
+  source_url: string | null;
+  source_note: string | null;
   has_prerequisites: number;
 };
 
