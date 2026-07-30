@@ -71,6 +71,18 @@ function useReturnFromCheckout() {
   });
 
   useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+
+    // Auth0 completes sign-in by reading ?code and ?state off the URL. This
+    // component is a CHILD of Auth0Provider and React runs child effects
+    // first, so clearing the query string here would strip those parameters
+    // before the SDK ever sees them — sign-in then fails silently, with a
+    // clean console and isAuthenticated stuck false. Leave the Auth0 redirect
+    // alone; the provider's own onRedirectCallback tidies it up.
+    if (search.has("code") || search.has("state")) {
+      return;
+    }
+
     if (window.location.search) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }

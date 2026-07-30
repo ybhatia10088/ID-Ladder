@@ -57,6 +57,9 @@ function Bootstrap() {
       }}
       // Survives the full-page redirect out to Stripe Checkout and back.
       cacheLocation="localstorage"
+      // Refresh tokens keep token renewal off the SDK's web-worker path, which
+      // is the part that trips 'eval' content-security warnings.
+      useRefreshTokens={true}
       onRedirectCallback={() => {
         window.history.replaceState({}, document.title, window.location.pathname);
       }}
