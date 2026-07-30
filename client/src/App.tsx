@@ -40,9 +40,9 @@ function Gateway() {
         <Wordmark />
         <h1>Get your clients their documents, without paying for what a waiver covers.</h1>
         <p>
-          ID Ladder maps every record a client needs to reach a state ID, shows which fees your
-          organization can waive by vouching for them, and charges only for what is genuinely
-          owed. Sign in to open your caseload.
+          ID Ladder traces the chain of records a client needs to reach a state ID, shows which
+          fees your organization can waive by vouching, and charges only for what is genuinely
+          owed. Currently modeling California, Michigan, and Washington.
         </p>
         <button className="btn" onClick={() => void loginWithRedirect()}>
           Sign in to continue
