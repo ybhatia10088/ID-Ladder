@@ -10,7 +10,9 @@
 
 export type StepLabel =
   | "HELD"
-  | "WAIVABLE"
+  | "PAID"
+  | "WAIVED"
+  | "WAIVABLE_PENDING"
   | "PAYABLE"
   | "PAYABLE_UNVERIFIED"
   | "BLOCKED_JURISDICTION";
@@ -36,6 +38,16 @@ export type ResolverCase = {
   goal_document_id: string;
 };
 
+export type ResolverAttestation = {
+  document_id: string;
+  valid_in_jurisdiction: string;
+};
+
+export type ResolverPayment = {
+  document_id: string;
+  status: string;
+};
+
 export type ResolverInput = {
   caseRecord: ResolverCase;
   documents: ResolverDocument[];
@@ -44,6 +56,10 @@ export type ResolverInput = {
   holdings: string[];
   /** Jurisdictions the requesting organization is a verified provider in. */
   standingJurisdictions: string[];
+  /** Attestations already on file for this case. */
+  attestations: ResolverAttestation[];
+  /** Payments already recorded for this case. */
+  payments: ResolverPayment[];
 };
 
 export type PlanStep = {
@@ -52,7 +68,9 @@ export type PlanStep = {
   jurisdiction: string;
   label: StepLabel;
   fee_cents: number | null;
-  /** True only for PAYABLE steps — the ones summed into total_cost_cents. */
+  /** True when this step still costs money — i.e. it is not already settled. */
+  chargeable: boolean;
+  /** True for chargeable steps with a known fee — the ones actually summed. */
   counts_toward_total: boolean;
   /** Set when the document was swapped for the client's birth jurisdiction. */
   substituted_for?: string;
@@ -89,21 +107,43 @@ const BIRTH_RECORD_BY_JURISDICTION: Record<string, string> = {
 
 const BIRTH_RECORD_IDS = new Set(Object.values(BIRTH_RECORD_BY_JURISDICTION));
 
+/** Labels that no longer cost anything: already settled one way or another. */
+const SETTLED_LABELS = new Set<StepLabel>(["HELD", "PAID", "WAIVED"]);
+
 function labelFor(
   document: ResolverDocument,
   holdings: Set<string>,
   standing: Set<string>,
+  attestedJurisdictions: Map<string, Set<string>>,
+  paidDocumentIds: Set<string>,
 ): StepLabel {
   // Already in hand — nothing to pay, nothing to attest.
   if (holdings.has(document.id)) {
     return "HELD";
   }
 
-  // Cost minimisation is exactly this: prefer a waiver over paying, whenever
-  // the organization has standing in the document's own jurisdiction. This is
-  // the single rule that makes an attestation change the total.
+  // Money already changed hands for this document.
+  if (paidDocumentIds.has(document.id)) {
+    return "PAID";
+  }
+
   if (document.waiver_available === 1) {
-    return standing.has(document.jurisdiction) ? "WAIVABLE" : "BLOCKED_JURISDICTION";
+    // A waiver is not real until a provider signs. An attestation only counts
+    // if it was issued for the jurisdiction that actually holds the document —
+    // a California attestation cannot clear a Michigan record.
+    if (attestedJurisdictions.get(document.id)?.has(document.jurisdiction)) {
+      return "WAIVED";
+    }
+
+    // The org could sign but has not yet, so the fee still stands. Charging
+    // full price here is what makes attesting visibly drop the total.
+    if (standing.has(document.jurisdiction)) {
+      return "WAIVABLE_PENDING";
+    }
+
+    // A waiver exists in principle, but this org cannot obtain it. Someone
+    // still has to pay, so this counts toward the total.
+    return "BLOCKED_JURISDICTION";
   }
 
   // No waiver exists. A NULL fee means we never verified a real figure, so it
@@ -116,11 +156,37 @@ function labelFor(
 }
 
 export function resolvePlan(input: ResolverInput): Plan {
-  const { caseRecord, documents, prerequisites, holdings, standingJurisdictions } = input;
+  const {
+    caseRecord,
+    documents,
+    prerequisites,
+    holdings,
+    standingJurisdictions,
+    attestations,
+    payments,
+  } = input;
 
   const documentsById = new Map(documents.map((d) => [d.id, d]));
   const heldIds = new Set(holdings);
   const standing = new Set(standingJurisdictions);
+
+  // document_id -> the jurisdictions it has been attested for on this case.
+  const attestedJurisdictions = new Map<string, Set<string>>();
+  for (const attestation of attestations) {
+    const existing = attestedJurisdictions.get(attestation.document_id);
+    if (existing) {
+      existing.add(attestation.valid_in_jurisdiction);
+    } else {
+      attestedJurisdictions.set(
+        attestation.document_id,
+        new Set([attestation.valid_in_jurisdiction]),
+      );
+    }
+  }
+
+  const paidDocumentIds = new Set(
+    payments.filter((p) => p.status === "succeeded").map((p) => p.document_id),
+  );
 
   const requiredBy = new Map<string, string[]>();
   for (const edge of prerequisites) {
@@ -164,14 +230,19 @@ export function resolvePlan(input: ResolverInput): Plan {
       return; // unknown document id; nothing meaningful to say about it
     }
 
-    const label = labelFor(document, heldIds, standing);
+    const label = labelFor(document, heldIds, standing, attestedJurisdictions, paidDocumentIds);
+    const chargeable = !SETTLED_LABELS.has(label);
     const step: PlanStep = {
       document_id: document.id,
       name: document.name,
       jurisdiction: document.jurisdiction,
       label,
       fee_cents: document.fee_cents,
-      counts_toward_total: label === "PAYABLE",
+      chargeable,
+      // A chargeable step with an unverified fee contributes nothing rather
+      // than a fabricated 0; has_unverified_costs flags that the total is a
+      // floor, not the real number.
+      counts_toward_total: chargeable && document.fee_cents !== null,
     };
     if (documentId !== rawId) {
       step.substituted_for = rawId;
@@ -195,6 +266,6 @@ export function resolvePlan(input: ResolverInput): Plan {
     goal_document_id: caseRecord.goal_document_id,
     steps,
     total_cost_cents,
-    has_unverified_costs: steps.some((s) => s.label === "PAYABLE_UNVERIFIED"),
+    has_unverified_costs: steps.some((s) => s.chargeable && s.fee_cents === null),
   };
 }

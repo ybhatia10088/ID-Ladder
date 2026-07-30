@@ -90,6 +90,25 @@ it came from. When adding or changing one:
 - Fees change. Re-check before relying on a figure; the CA birth record fee is
   already scheduled to drop $2 in 2027.
 
+## Resolver labels
+
+A waiver is **not real until a provider signs**. That distinction is the whole
+product, so the labels keep it explicit:
+
+| Label | Meaning | Costs money? |
+|---|---|---|
+| `HELD` | already in `case_holdings` | no |
+| `PAID` | a `succeeded` payment exists for this case + document | no |
+| `WAIVED` | an attestation exists whose `valid_in_jurisdiction` matches the document's jurisdiction | no |
+| `WAIVABLE_PENDING` | waiver exists and the org has standing, but nobody has signed yet | **yes, full fee** |
+| `BLOCKED_JURISDICTION` | waiver exists but the org lacks standing there | **yes, full fee** |
+| `PAYABLE` | has a fee, no waiver exists | yes |
+| `PAYABLE_UNVERIFIED` | no waiver and `fee_cents IS NULL` | unknown — excluded from the total |
+
+`counts_toward_total` is `chargeable && fee_cents !== null`. A chargeable step
+with an unverified fee sets `has_unverified_costs`, so the total is reported as
+a floor rather than silently understated by treating NULL as 0.
+
 ## Status
 
 Milestone 1 complete: client/server scaffold, `GET /api/health`, dev proxy,
@@ -99,5 +118,12 @@ Milestone 2 complete: SQLite schema at [server/src/db/schema.sql](server/src/db/
 cited seed data at [server/src/db/seed.ts](server/src/db/seed.ts), and an
 idempotent `npm run seed`.
 
-Not built yet — **do not build ahead of the milestone**: resolver logic, API
-routes, Auth0 wiring, Stripe wiring.
+Milestone 3 complete: pure resolver in [server/src/resolver.ts](server/src/resolver.ts)
+and `GET /api/cases/:id/plan`.
+
+Milestone 4 complete: attestations drive the plan (`POST /api/cases/:id/attest`),
+per-document payment via Stripe hosted Checkout (`POST /api/cases/:id/pay`),
+and an org subscription (`POST /api/organizations/:id/subscribe`).
+
+Not built yet: Auth0 wiring (`attested_by_user_id` is still `"demo-user"`), a
+Stripe webhook, and any UI.
