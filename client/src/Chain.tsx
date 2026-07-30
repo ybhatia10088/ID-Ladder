@@ -77,6 +77,8 @@ type ChainProps = {
   standing: string[];
   caseSummary?: CaseSummary;
   busyDocumentId: string | null;
+  /** Set briefly after returning from Stripe, to point at what was just paid. */
+  paidDocumentId?: string | null;
   onVouch: (documentId: string) => void;
   onPay: (documentId: string) => void;
 };
@@ -86,6 +88,7 @@ export default function Chain({
   standing,
   caseSummary,
   busyDocumentId,
+  paidDocumentId,
   onVouch,
   onPay,
 }: ChainProps) {
@@ -108,6 +111,7 @@ export default function Chain({
         const settled = SETTLED.includes(step.label);
         const isBlocked = step.label === "BLOCKED_JURISDICTION";
         const busy = busyDocumentId === step.document_id;
+        const justPaid = paidDocumentId === step.document_id;
 
         // The spine below a step takes that step's colour once it is settled,
         // so cleared runs read as one continuous solid line.
@@ -144,6 +148,7 @@ export default function Chain({
               <div className="gate-main">
                 <div className="gate-status">
                   {index + 1} · {presentation.status}
+                  {justPaid ? <span className="just-paid">Payment received</span> : null}
                 </div>
                 <h3 className="gate-name">{step.name}</h3>
 

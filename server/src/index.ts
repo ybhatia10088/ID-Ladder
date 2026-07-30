@@ -366,6 +366,9 @@ app.get("/api/payments/return", async (req: Request, res: Response) => {
   try {
     const session = await getStripe().checkout.sessions.retrieve(sessionId);
     const caseId = session.metadata?.case_id ?? "";
+    // Carried back so the UI can reopen the right case and point at the step
+    // that was just paid for.
+    const documentId = session.metadata?.document_id ?? "";
 
     if (session.payment_status === "paid") {
       const paymentIntentId =
@@ -376,7 +379,10 @@ app.get("/api/payments/return", async (req: Request, res: Response) => {
          WHERE stripe_payment_intent_id = ?`,
       ).run(paymentIntentId, sessionId);
 
-      res.redirect(`/?payment=succeeded&case_id=${encodeURIComponent(caseId)}`);
+      res.redirect(
+        `/?payment=succeeded&case_id=${encodeURIComponent(caseId)}` +
+          `&document_id=${encodeURIComponent(documentId)}`,
+      );
       return;
     }
 

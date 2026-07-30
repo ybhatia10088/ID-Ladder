@@ -52,17 +52,51 @@ function Gateway() {
   );
 }
 
+/**
+ * Stripe sends the browser back to `/?payment=succeeded&case_id=…&document_id=…`.
+ * Read once in a state initialiser — before any effect can run — then clear the
+ * query string so a refresh does not replay the confirmation.
+ */
+function useReturnFromCheckout() {
+  const [params] = useState(() => {
+    const search = new URLSearchParams(window.location.search);
+    return {
+      paid: search.get("payment") === "succeeded",
+      caseId: search.get("case_id") || null,
+      documentId: search.get("document_id") || null,
+    };
+  });
+
+  useEffect(() => {
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  return params;
+}
+
 export default function App() {
   const { isLoading, isAuthenticated, logout, getAccessTokenSilently } = useAuth0();
+  const returned = useReturnFromCheckout();
 
   const [me, setMe] = useState<Me | null>(null);
   const [cases, setCases] = useState<CaseSummary[]>([]);
-  const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
+  const [activeCaseId, setActiveCaseId] = useState<string | null>(returned.caseId);
+  const [paidDocumentId, setPaidDocumentId] = useState<string | null>(
+    returned.paid ? returned.documentId : null,
+  );
   const [plan, setPlan] = useState<Plan | null>(null);
   const [busyDocumentId, setBusyDocumentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const token = useCallback(() => getAccessTokenSilently(), [getAccessTokenSilently]);
+
+  useEffect(() => {
+    if (!paidDocumentId) return;
+    const timer = window.setTimeout(() => setPaidDocumentId(null), 12000);
+    return () => window.clearTimeout(timer);
+  }, [paidDocumentId]);
 
   // Load identity and caseload once signed in.
   useEffect(() => {
@@ -79,7 +113,10 @@ export default function App() {
         if (cancelled) return;
         setMe(profile);
         setCases(caseList.cases);
-        setActiveCaseId((current) => current ?? caseList.cases[0]?.id ?? null);
+        setActiveCaseId((current) => {
+          const known = caseList.cases.some((entry) => entry.id === current);
+          return known ? current : (caseList.cases[0]?.id ?? null);
+        });
       } catch (caught) {
         if (!cancelled) setError(caught instanceof Error ? caught.message : String(caught));
       }
@@ -228,6 +265,7 @@ export default function App() {
             standing={me?.organization.standing_jurisdictions ?? []}
             caseSummary={activeCase}
             busyDocumentId={busyDocumentId}
+            paidDocumentId={paidDocumentId}
             onVouch={(id) => void onVouch(id)}
             onPay={(id) => void onPay(id)}
           />
