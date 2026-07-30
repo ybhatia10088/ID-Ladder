@@ -285,6 +285,11 @@ app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
     const organization = req.organization!;
     const standing = organization.standing_jurisdictions;
 
+    // Deliberately the organization's REAL standing, never the overridden
+    // value. The control strip is a what-if view; letting it authorize a write
+    // would let any caller grant themselves a jurisdiction by query parameter,
+    // and the affidavit would then assert a state the organization is not
+    // approved in. Overrides below shape the plan we hand back, nothing more.
     if (!standing.includes(document.jurisdiction)) {
       res.status(403).json({
         error: "Organization has no verified standing in this document's jurisdiction",
@@ -325,7 +330,15 @@ app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
       );
     }
 
-    res.json(buildPlan(db, caseRecord.id, organization.id, standing));
+    res.json(
+      buildPlan(
+        db,
+        caseRecord.id,
+        organization.id,
+        standing,
+        overridesFrom(req.query as Record<string, unknown>),
+      ),
+    );
   } finally {
     db.close();
   }
@@ -382,11 +395,15 @@ app.get("/api/cases/:id/affidavit/:documentId", requireAuth, (req, res) => {
 app.post("/api/cases/:id/pay", requireAuth, async (req: Request, res: Response) => {
   const db = openDatabase();
   try {
+    // Validate against the same plan the caller is looking at. Without this a
+    // document that only exists under active control-strip overrides is
+    // rejected as "not part of this case's plan".
     const plan = buildPlan(
       db,
       req.params.id,
       req.organization!.id,
       req.organization!.standing_jurisdictions,
+      overridesFrom(req.query as Record<string, unknown>),
     );
     if (!plan) {
       res.status(404).json({ error: "Case not found" });

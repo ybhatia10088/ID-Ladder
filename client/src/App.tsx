@@ -177,7 +177,7 @@ export default function App() {
     setBusyDocumentId(documentId);
     setError(null);
     try {
-      await api.attest(await token(), activeCaseId, documentId);
+      await api.attest(await token(), activeCaseId, documentId, controls);
       // Refetch rather than trusting the POST response, so the plan still
       // reflects whatever the control strip is currently set to.
       setPlan(await api.plan(await token(), activeCaseId, controls));
@@ -199,7 +199,7 @@ export default function App() {
     setBusyDocumentId(documentId);
     setError(null);
     try {
-      const { checkout_url } = await api.pay(await token(), activeCaseId, documentId);
+      const { checkout_url } = await api.pay(await token(), activeCaseId, documentId, controls);
       window.location.href = checkout_url;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));

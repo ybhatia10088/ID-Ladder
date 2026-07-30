@@ -150,6 +150,22 @@ async function request<T>(
   return body as T;
 }
 
+/**
+ * Serialises the active control-strip overrides. Every case action sends them,
+ * so the server validates against the same plan the caller is looking at.
+ */
+function controlQuery(controls: ControlState): string {
+  const params = new URLSearchParams();
+  if (controls.born_in) params.set("born_in", controls.born_in);
+  if (controls.living_in) params.set("living_in", controls.living_in);
+  if (controls.goal) params.set("goal", controls.goal);
+  // Sent even when empty: an empty list is a meaningful instruction.
+  if (controls.holds) params.set("holds", controls.holds.join(","));
+  if (controls.standing) params.set("standing", controls.standing.join(","));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export const api = {
   me: (token: string) => request<Me>("/api/me", token),
 
@@ -157,30 +173,22 @@ export const api = {
 
   graph: (token: string) => request<Graph>("/api/graph", token),
 
-  plan: (token: string, caseId: string, controls: ControlState = {}) => {
-    const params = new URLSearchParams();
-    if (controls.born_in) params.set("born_in", controls.born_in);
-    if (controls.living_in) params.set("living_in", controls.living_in);
-    if (controls.goal) params.set("goal", controls.goal);
-    // Sent even when empty: an empty list is a meaningful instruction.
-    if (controls.holds) params.set("holds", controls.holds.join(","));
-    if (controls.standing) params.set("standing", controls.standing.join(","));
-    const query = params.toString();
-    return request<Plan>(
-      `/api/cases/${encodeURIComponent(caseId)}/plan${query ? `?${query}` : ""}`,
+  plan: (token: string, caseId: string, controls: ControlState = {}) =>
+    request<Plan>(
+      `/api/cases/${encodeURIComponent(caseId)}/plan${controlQuery(controls)}`,
       token,
-    );
-  },
+    ),
 
-  attest: (token: string, caseId: string, documentId: string) =>
-    request<Plan>(`/api/cases/${encodeURIComponent(caseId)}/attest`, token, {
-      method: "POST",
-      body: JSON.stringify({ document_id: documentId }),
-    }),
+  attest: (token: string, caseId: string, documentId: string, controls: ControlState = {}) =>
+    request<Plan>(
+      `/api/cases/${encodeURIComponent(caseId)}/attest${controlQuery(controls)}`,
+      token,
+      { method: "POST", body: JSON.stringify({ document_id: documentId }) },
+    ),
 
-  pay: (token: string, caseId: string, documentId: string) =>
+  pay: (token: string, caseId: string, documentId: string, controls: ControlState = {}) =>
     request<{ checkout_url: string; amount_cents: number }>(
-      `/api/cases/${encodeURIComponent(caseId)}/pay`,
+      `/api/cases/${encodeURIComponent(caseId)}/pay${controlQuery(controls)}`,
       token,
       { method: "POST", body: JSON.stringify({ document_id: documentId }) },
     ),
