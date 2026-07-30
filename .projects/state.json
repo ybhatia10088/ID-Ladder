@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "providers": {
+    "auth0": {
+      "name": "Auth0"
+    },
+    "railway": {
+      "name": "Railway"
+    }
+  },
+  "resources": {
+    "auth0-plan": {
+      "name": "auth0-plan",
+      "providerName": "Auth0",
+      "serviceId": "free"
+    },
+    "railway-hosting": {
+      "name": "railway-hosting",
+      "providerName": "Railway",
+      "serviceId": "hosting"
+    },
+    "railway-hosting-2": {
+      "name": "railway-hosting-2",
+      "providerName": "Railway",
+      "serviceId": "hosting"
+    },
+    "railway-plan": {
+      "name": "railway-plan",
+      "providerName": "Railway",
+      "serviceId": "free"
+    }
+  }
+}
