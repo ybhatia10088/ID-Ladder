@@ -7,6 +7,8 @@ import express from "express";
 import type { Request, Response } from "express";
 
 import { requireAuth } from "./auth.js";
+import { overridesFrom } from "./plan-overrides.js";
+import type { PlanOverrides } from "./plan-overrides.js";
 import { openDatabase } from "./db/index.js";
 import { loadEnv } from "./env.js";
 import { resolvePlan } from "./resolver.js";
@@ -50,6 +52,7 @@ function buildPlan(
   caseId: string,
   organizationId: string,
   standingJurisdictions: string[],
+  overrides: PlanOverrides = {},
 ): Plan | null {
   // Scoped by organization: a case id belonging to someone else must be
   // indistinguishable from one that does not exist.
@@ -64,20 +67,29 @@ function buildPlan(
     return null;
   }
 
+  const effectiveCase = {
+    ...caseRecord,
+    birth_jurisdiction: overrides.birth_jurisdiction ?? caseRecord.birth_jurisdiction,
+    current_jurisdiction: overrides.current_jurisdiction ?? caseRecord.current_jurisdiction,
+    goal_document_id: overrides.goal_document_id ?? caseRecord.goal_document_id,
+  };
+
+  const storedHoldings = (
+    db.prepare(`SELECT document_id FROM case_holdings WHERE case_id = ?`).all(caseId) as {
+      document_id: string;
+    }[]
+  ).map((row) => row.document_id);
+
   return resolvePlan({
-    caseRecord,
+    caseRecord: effectiveCase,
     documents: db
       .prepare(`SELECT id, name, jurisdiction, fee_cents, waiver_available FROM documents`)
       .all() as ResolverDocument[],
     prerequisites: db
       .prepare(`SELECT document_id, requires_document_id, attestable FROM prerequisites`)
       .all() as ResolverPrerequisite[],
-    holdings: (
-      db.prepare(`SELECT document_id FROM case_holdings WHERE case_id = ?`).all(caseId) as {
-        document_id: string;
-      }[]
-    ).map((row) => row.document_id),
-    standingJurisdictions,
+    holdings: overrides.holdings ?? storedHoldings,
+    standingJurisdictions: overrides.standing ?? standingJurisdictions,
     attestations: db
       .prepare(`SELECT document_id, valid_in_jurisdiction FROM attestations WHERE case_id = ?`)
       .all(caseId) as ResolverAttestation[],
@@ -139,20 +151,83 @@ app.get("/api/cases", requireAuth, (req, res) => {
   }
 });
 
+/**
+ * The document graph: goal options for the control strip, and headline counts
+ * showing the graph is larger than any single chain.
+ */
+app.get("/api/graph", requireAuth, (_req, res) => {
+  const db = openDatabase();
+  try {
+    res.json({
+      documents: db
+        .prepare(
+          `SELECT d.id, d.name, d.jurisdiction, d.fee_cents, d.waiver_available,
+                  EXISTS (SELECT 1 FROM prerequisites p WHERE p.document_id = d.id)
+                    AS has_prerequisites
+           FROM documents d
+           ORDER BY d.jurisdiction, d.name`,
+        )
+        .all(),
+      stats: {
+        documents: (db.prepare(`SELECT COUNT(*) AS n FROM documents`).get() as { n: number }).n,
+        prerequisites: (
+          db.prepare(`SELECT COUNT(*) AS n FROM prerequisites`).get() as { n: number }
+        ).n,
+        by_jurisdiction: db
+          .prepare(
+            `SELECT jurisdiction, COUNT(*) AS documents
+             FROM documents GROUP BY jurisdiction ORDER BY jurisdiction`,
+          )
+          .all(),
+      },
+    });
+  } finally {
+    db.close();
+  }
+});
+
 app.get("/api/cases/:id/plan", requireAuth, (req, res) => {
   const db = openDatabase();
   try {
+    const overrides = overridesFrom(req.query as Record<string, unknown>);
     const plan = buildPlan(
       db,
       req.params.id,
       req.organization!.id,
       req.organization!.standing_jurisdictions,
+      overrides,
     );
     if (!plan) {
       res.status(404).json({ error: "Case not found" });
       return;
     }
-    res.json(plan);
+
+    const stored = db
+      .prepare(
+        `SELECT birth_jurisdiction, current_jurisdiction, goal_document_id
+         FROM cases WHERE id = ?`,
+      )
+      .get(req.params.id) as {
+      birth_jurisdiction: string;
+      current_jurisdiction: string;
+      goal_document_id: string;
+    };
+
+    // Echo what the plan was actually computed with, so the controls can render
+    // in sync and show when they diverge from what is stored.
+    res.json({
+      ...plan,
+      controls: {
+        birth_jurisdiction: overrides.birth_jurisdiction ?? stored.birth_jurisdiction,
+        current_jurisdiction: overrides.current_jurisdiction ?? stored.current_jurisdiction,
+        goal_document_id: overrides.goal_document_id ?? stored.goal_document_id,
+        holdings: overrides.holdings ?? [],
+        standing: overrides.standing ?? req.organization!.standing_jurisdictions,
+        stored,
+        organization_standing: req.organization!.standing_jurisdictions,
+        overridden: Object.keys(overrides).length > 0,
+      },
+    });
   } finally {
     db.close();
   }

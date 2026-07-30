@@ -673,3 +673,155 @@ button {
   vertical-align: 1px;
   animation: paidIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
+
+/* ------------------------------------------------------------------ controls */
+
+/* Reads as an instrument panel bolted above the ladder: same ledger language,
+   recessed rather than raised, so it never competes with the chain or total. */
+.controls {
+  margin-top: 22px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.62);
+  padding: 16px 18px 18px;
+}
+
+.controls-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.controls-reset {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--civic);
+  font-size: 12.5px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+  gap: 16px 20px;
+}
+
+.control--wide {
+  grid-column: 1 / -1;
+}
+
+.control .label {
+  margin-bottom: 7px;
+}
+
+/* Fills its grid cell and divides evenly, so the three state names can never
+   overflow and clip the control beside them. */
+.segmented {
+  display: flex;
+  width: 100%;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.segment {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  padding: 8px 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  border-right: 2px solid var(--line);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.segment:last-child {
+  border-right: none;
+}
+
+.segment:hover {
+  background: rgba(29, 78, 216, 0.07);
+}
+
+.segment[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.control-select {
+  width: 100%;
+  font: inherit;
+  font-size: 13.5px;
+  padding: 9px 11px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.chips {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.toggle {
+  border: 2px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-muted);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.toggle:hover {
+  border-color: var(--ink-muted);
+}
+
+/* Standing is the thesis, so an active jurisdiction is green — the same green
+   as a waived fee, because that is exactly what it unlocks. */
+.toggle[aria-pressed="true"] {
+  background: var(--waived);
+  border-color: var(--waived);
+  color: #fff;
+}
+
+.checks {
+  display: flex;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--held);
+  cursor: pointer;
+}
+
+.controls-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-faint);
+}

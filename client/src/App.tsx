@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 
 import Chain from "./Chain";
+import Controls from "./Controls";
 import Total from "./Total";
 import { ApiError, api } from "./api";
-import type { CaseSummary, Me, Plan } from "./api";
+import type { CaseSummary, ControlState, Graph, Me, Plan } from "./api";
 
 const JURISDICTION_NAMES: Record<string, string> = {
   CA: "California",
@@ -87,6 +88,9 @@ export default function App() {
     returned.paid ? returned.documentId : null,
   );
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [graph, setGraph] = useState<Graph | null>(null);
+  // Live overrides for the resolver. Query params only — never persisted.
+  const [controls, setControls] = useState<ControlState>({});
   const [busyDocumentId, setBusyDocumentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,13 +110,15 @@ export default function App() {
     void (async () => {
       try {
         const accessToken = await token();
-        const [profile, caseList] = await Promise.all([
+        const [profile, caseList, documentGraph] = await Promise.all([
           api.me(accessToken),
           api.cases(accessToken),
+          api.graph(accessToken),
         ]);
         if (cancelled) return;
         setMe(profile);
         setCases(caseList.cases);
+        setGraph(documentGraph);
         setActiveCaseId((current) => {
           const known = caseList.cases.some((entry) => entry.id === current);
           return known ? current : (caseList.cases[0]?.id ?? null);
@@ -135,7 +141,7 @@ export default function App() {
     let cancelled = false;
     void (async () => {
       try {
-        const next = await api.plan(await token(), activeCaseId);
+        const next = await api.plan(await token(), activeCaseId, controls);
         if (!cancelled) setPlan(next);
       } catch (caught) {
         if (!cancelled) setError(caught instanceof Error ? caught.message : String(caught));
@@ -145,14 +151,17 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, activeCaseId, token]);
+  }, [isAuthenticated, activeCaseId, token, controls]);
 
   const onVouch = async (documentId: string) => {
     if (!activeCaseId) return;
     setBusyDocumentId(documentId);
     setError(null);
     try {
-      setPlan(await api.attest(await token(), activeCaseId, documentId));
+      await api.attest(await token(), activeCaseId, documentId);
+      // Refetch rather than trusting the POST response, so the plan still
+      // reflects whatever the control strip is currently set to.
+      setPlan(await api.plan(await token(), activeCaseId, controls));
     } catch (caught) {
       setError(
         caught instanceof ApiError && caught.status === 403
@@ -232,7 +241,10 @@ export default function App() {
             key={entry.id}
             className="casetab"
             aria-pressed={entry.id === activeCaseId}
-            onClick={() => setActiveCaseId(entry.id)}
+            onClick={() => {
+              setActiveCaseId(entry.id);
+              setControls({});
+            }}
           >
             <div className="casetab-ref mono">{entry.client_ref}</div>
             <div className="casetab-route">
@@ -260,9 +272,17 @@ export default function App() {
 
           {error ? <p className="notice">{error}</p> : null}
 
+          <Controls
+            plan={plan}
+            graph={graph}
+            controls={controls}
+            onChange={setControls}
+            onReset={() => setControls({})}
+          />
+
           <Chain
             plan={plan}
-            standing={me?.organization.standing_jurisdictions ?? []}
+            standing={plan.controls.standing}
             caseSummary={activeCase}
             busyDocumentId={busyDocumentId}
             paidDocumentId={paidDocumentId}

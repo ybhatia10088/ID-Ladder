@@ -18,12 +18,55 @@ export type PlanStep = {
   substituted_for?: string;
 };
 
+export type PlanControls = {
+  birth_jurisdiction: string;
+  current_jurisdiction: string;
+  goal_document_id: string;
+  holdings: string[];
+  standing: string[];
+  stored: {
+    birth_jurisdiction: string;
+    current_jurisdiction: string;
+    goal_document_id: string;
+  };
+  organization_standing: string[];
+  overridden: boolean;
+};
+
 export type Plan = {
   case_id: string;
   goal_document_id: string;
   steps: PlanStep[];
   total_cost_cents: number;
   has_unverified_costs: boolean;
+  controls: PlanControls;
+};
+
+/** What the control strip sends back as query parameters. */
+export type ControlState = {
+  born_in?: string;
+  living_in?: string;
+  goal?: string;
+  holds?: string[];
+  standing?: string[];
+};
+
+export type GraphDocument = {
+  id: string;
+  name: string;
+  jurisdiction: string;
+  fee_cents: number | null;
+  waiver_available: 0 | 1;
+  has_prerequisites: number;
+};
+
+export type Graph = {
+  documents: GraphDocument[];
+  stats: {
+    documents: number;
+    prerequisites: number;
+    by_jurisdiction: { jurisdiction: string; documents: number }[];
+  };
 };
 
 export type CaseSummary = {
@@ -92,8 +135,22 @@ export const api = {
 
   cases: (token: string) => request<{ cases: CaseSummary[] }>("/api/cases", token),
 
-  plan: (token: string, caseId: string) =>
-    request<Plan>(`/api/cases/${encodeURIComponent(caseId)}/plan`, token),
+  graph: (token: string) => request<Graph>("/api/graph", token),
+
+  plan: (token: string, caseId: string, controls: ControlState = {}) => {
+    const params = new URLSearchParams();
+    if (controls.born_in) params.set("born_in", controls.born_in);
+    if (controls.living_in) params.set("living_in", controls.living_in);
+    if (controls.goal) params.set("goal", controls.goal);
+    // Sent even when empty: an empty list is a meaningful instruction.
+    if (controls.holds) params.set("holds", controls.holds.join(","));
+    if (controls.standing) params.set("standing", controls.standing.join(","));
+    const query = params.toString();
+    return request<Plan>(
+      `/api/cases/${encodeURIComponent(caseId)}/plan${query ? `?${query}` : ""}`,
+      token,
+    );
+  },
 
   attest: (token: string, caseId: string, documentId: string) =>
     request<Plan>(`/api/cases/${encodeURIComponent(caseId)}/attest`, token, {

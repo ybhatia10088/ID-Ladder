@@ -301,3 +301,64 @@ test("a cycle in the prerequisites graph terminates instead of hanging", () => {
 
   assert.equal(plan.steps.length, 2);
 });
+
+test("holding a document prunes its branch from the plan", () => {
+  const withoutHolding = resolvePlan(buildInput());
+  // Give the birth record its own prerequisite so there is a branch to prune.
+  const deeper: ResolverPrerequisite[] = [
+    ...prerequisites,
+    {
+      document_id: "ca-birth-certificate-state",
+      requires_document_id: "ca-proof-of-residency",
+      attestable: 0,
+    },
+  ];
+
+  const held = resolvePlan(
+    buildInput({ prerequisites: deeper, holdings: ["ca-birth-certificate-state"] }),
+  );
+
+  assert.equal(labelOf(held, "ca-birth-certificate-state"), "HELD");
+  // The chain still contains the goal and its other prerequisites.
+  assert.ok(held.steps.some((s) => s.document_id === "ca-id-card"));
+  assert.ok(withoutHolding.steps.length > 0);
+});
+
+test("a waived document does NOT prune its branch", () => {
+  const deeper: ResolverPrerequisite[] = [
+    {
+      document_id: "ca-id-card",
+      requires_document_id: "ca-birth-certificate-state",
+      attestable: 0,
+    },
+    {
+      document_id: "ca-birth-certificate-state",
+      requires_document_id: "us-ssn-card",
+      attestable: 0,
+    },
+  ];
+
+  const plan = resolvePlan(
+    buildInput({
+      prerequisites: deeper,
+      attestations: [{ document_id: "ca-birth-certificate-state", valid_in_jurisdiction: "CA" }],
+    }),
+  );
+
+  assert.equal(labelOf(plan, "ca-birth-certificate-state"), "WAIVED");
+  // Waiving the fee does not conjure the underlying document.
+  assert.ok(plan.steps.some((s) => s.document_id === "us-ssn-card"));
+});
+
+test("adding Michigan standing unblocks a Michigan-born client's birth record", () => {
+  // The thesis: this is exactly what the control strip must demonstrate.
+  const asStored = resolvePlan(
+    buildInput({ caseRecord: MICHIGAN_BORN_CASE, standingJurisdictions: ["CA"] }),
+  );
+  const withMichigan = resolvePlan(
+    buildInput({ caseRecord: MICHIGAN_BORN_CASE, standingJurisdictions: ["CA", "MI"] }),
+  );
+
+  assert.equal(labelOf(asStored, "mi-birth-certificate-state"), "BLOCKED_JURISDICTION");
+  assert.equal(labelOf(withMichigan, "mi-birth-certificate-state"), "WAIVABLE_PENDING");
+});

@@ -10,7 +10,7 @@
     "prestart": "node dist/db/bootstrap.js",
     "start": "node dist/index.js",
     "seed": "tsx src/db/seed.ts",
-    "test": "tsx --test src/resolver.test.ts src/provisioning.test.ts",
+    "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

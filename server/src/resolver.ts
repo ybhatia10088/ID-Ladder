@@ -219,8 +219,13 @@ export function resolvePlan(input: ResolverInput): Plan {
     }
     inProgress.add(documentId);
 
-    for (const dependencyId of requiredBy.get(documentId) ?? []) {
-      visit(dependencyId);
+    // A document the client already holds prunes its branch: how they would
+    // have obtained it is moot once it is in hand. Only HELD prunes — a waived
+    // or paid-for document still has to be assembled from its prerequisites.
+    if (!heldIds.has(documentId)) {
+      for (const dependencyId of requiredBy.get(documentId) ?? []) {
+        visit(dependencyId);
+      }
     }
 
     inProgress.delete(documentId);
