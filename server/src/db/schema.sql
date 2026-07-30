@@ -46,6 +46,16 @@ CREATE TABLE IF NOT EXISTS organizations (
   standing_jurisdictions TEXT NOT NULL DEFAULT '[]'
 );
 
+-- Maps an Auth0 user to the organization whose standing they act under.
+-- Auth0 Organizations is not configured on this tenant, so membership lives
+-- here instead; the resolver only ever needs the organization_id.
+CREATE TABLE IF NOT EXISTS user_organizations (
+  auth0_user_id   TEXT PRIMARY KEY,
+  email           TEXT,
+  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  created_at      TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS cases (
   id                   TEXT PRIMARY KEY,
   organization_id      TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,

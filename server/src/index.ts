@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import type { Request, Response } from "express";
 
+import { requireAuth } from "./auth.js";
 import { openDatabase } from "./db/index.js";
 import { loadEnv } from "./env.js";
 import { resolvePlan } from "./resolver.js";
@@ -29,19 +30,6 @@ const isProduction = process.env.NODE_ENV === "production";
 // levels below the repo root.
 const clientDist = path.resolve(__dirname, "../../client/dist");
 
-/** standing_jurisdictions is stored as a JSON array string, e.g. '["CA"]'. */
-function parseStandingJurisdictions(raw: string | undefined): string[] {
-  if (!raw) {
-    return [];
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
 type CaseRow = {
   id: string;
   organization_id: string;
@@ -57,7 +45,11 @@ type DatabaseHandle = ReturnType<typeof openDatabase>;
  * cached — so an attestation or payment written a moment ago is reflected in
  * the very next answer.
  */
-function buildPlan(db: DatabaseHandle, caseId: string): Plan | null {
+function buildPlan(
+  db: DatabaseHandle,
+  caseId: string,
+  standingJurisdictions: string[],
+): Plan | null {
   const caseRecord = db
     .prepare(
       `SELECT id, organization_id, birth_jurisdiction, current_jurisdiction, goal_document_id
@@ -68,10 +60,6 @@ function buildPlan(db: DatabaseHandle, caseId: string): Plan | null {
   if (!caseRecord) {
     return null;
   }
-
-  const organization = db
-    .prepare(`SELECT standing_jurisdictions FROM organizations WHERE id = ?`)
-    .get(caseRecord.organization_id) as { standing_jurisdictions: string } | undefined;
 
   return resolvePlan({
     caseRecord,
@@ -86,7 +74,7 @@ function buildPlan(db: DatabaseHandle, caseId: string): Plan | null {
         document_id: string;
       }[]
     ).map((row) => row.document_id),
-    standingJurisdictions: parseStandingJurisdictions(organization?.standing_jurisdictions),
+    standingJurisdictions,
     attestations: db
       .prepare(`SELECT document_id, valid_in_jurisdiction FROM attestations WHERE case_id = ?`)
       .all(caseId) as ResolverAttestation[],
@@ -107,10 +95,50 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get("/api/cases/:id/plan", (req, res) => {
+/**
+ * Public Auth0 configuration for the browser.
+ *
+ * Served at runtime rather than baked in at build time so the callback URL
+ * comes from APP_BASE_URL (or the request origin) and is never hardcoded —
+ * the same build works on localhost and in production.
+ */
+app.get("/api/config", (req, res) => {
+  res.json({
+    auth0: {
+      domain: process.env.AUTH0_DOMAIN ?? null,
+      clientId: process.env.AUTH0_CLIENT_ID ?? null,
+      redirectUri: baseUrl(req),
+    },
+  });
+});
+
+app.get("/api/me", requireAuth, (req, res) => {
+  res.json({ user: req.user, organization: req.organization });
+});
+
+app.get("/api/cases", requireAuth, (_req, res) => {
   const db = openDatabase();
   try {
-    const plan = buildPlan(db, req.params.id);
+    res.json({
+      cases: db
+        .prepare(
+          `SELECT c.id, c.client_ref, c.birth_jurisdiction, c.current_jurisdiction,
+                  c.goal_document_id, d.name AS goal_document_name
+           FROM cases c
+           JOIN documents d ON d.id = c.goal_document_id
+           ORDER BY c.id`,
+        )
+        .all(),
+    });
+  } finally {
+    db.close();
+  }
+});
+
+app.get("/api/cases/:id/plan", requireAuth, (req, res) => {
+  const db = openDatabase();
+  try {
+    const plan = buildPlan(db, req.params.id, req.organization!.standing_jurisdictions);
     if (!plan) {
       res.status(404).json({ error: "Case not found" });
       return;
@@ -128,7 +156,7 @@ app.get("/api/cases/:id/plan", (req, res) => {
  * attest in a jurisdiction it is verified in. A California provider signing
  * for a Michigan-held birth record is exactly the thing that must fail.
  */
-app.post("/api/cases/:id/attest", (req, res) => {
+app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
   const db = openDatabase();
   try {
     const caseRecord = db
@@ -140,7 +168,7 @@ app.post("/api/cases/:id/attest", (req, res) => {
       return;
     }
 
-    const body = req.body as { document_id?: unknown; attested_by_user_id?: unknown };
+    const body = req.body as { document_id?: unknown };
     const documentId = typeof body.document_id === "string" ? body.document_id : null;
     if (!documentId) {
       res.status(400).json({ error: "document_id is required" });
@@ -166,19 +194,17 @@ app.post("/api/cases/:id/attest", (req, res) => {
       return;
     }
 
-    const organization = db
-      .prepare(`SELECT id, name, standing_jurisdictions FROM organizations WHERE id = ?`)
-      .get(caseRecord.organization_id) as
-      | { id: string; name: string; standing_jurisdictions: string }
-      | undefined;
-
-    const standing = parseStandingJurisdictions(organization?.standing_jurisdictions);
+    // Standing comes from the signed-in user's organization, not the case's.
+    const organization = req.organization!;
+    const standing = organization.standing_jurisdictions;
 
     if (!standing.includes(document.jurisdiction)) {
       res.status(403).json({
         error: "Organization has no verified standing in this document's jurisdiction",
         document_id: document.id,
         document_jurisdiction: document.jurisdiction,
+        organization_id: organization.id,
+        organization_name: organization.name,
         organization_standing: standing,
       });
       return;
@@ -191,7 +217,7 @@ app.post("/api/cases/:id/attest", (req, res) => {
         `SELECT id FROM attestations
          WHERE case_id = ? AND document_id = ? AND organization_id = ?`,
       )
-      .get(caseRecord.id, document.id, caseRecord.organization_id) as { id: string } | undefined;
+      .get(caseRecord.id, document.id, organization.id) as { id: string } | undefined;
 
     if (!existing) {
       db.prepare(
@@ -202,14 +228,14 @@ app.post("/api/cases/:id/attest", (req, res) => {
         randomUUID(),
         caseRecord.id,
         document.id,
-        caseRecord.organization_id,
-        typeof body.attested_by_user_id === "string" ? body.attested_by_user_id : "demo-user",
+        organization.id,
+        req.user!.sub,
         document.jurisdiction,
         new Date().toISOString(),
       );
     }
 
-    res.json(buildPlan(db, caseRecord.id));
+    res.json(buildPlan(db, caseRecord.id, standing));
   } finally {
     db.close();
   }
@@ -220,10 +246,10 @@ app.post("/api/cases/:id/attest", (req, res) => {
  * pending payment row. Hosted Checkout only — this project never collects card
  * details itself.
  */
-app.post("/api/cases/:id/pay", async (req: Request, res: Response) => {
+app.post("/api/cases/:id/pay", requireAuth, async (req: Request, res: Response) => {
   const db = openDatabase();
   try {
-    const plan = buildPlan(db, req.params.id);
+    const plan = buildPlan(db, req.params.id, req.organization!.standing_jurisdictions);
     if (!plan) {
       res.status(404).json({ error: "Case not found" });
       return;
@@ -348,7 +374,7 @@ app.get("/api/payments/return", async (req: Request, res: Response) => {
 });
 
 /** Org-level subscription: "ID Ladder Pro", $49/mo, hosted Checkout. */
-app.post("/api/organizations/:id/subscribe", async (req: Request, res: Response) => {
+app.post("/api/organizations/:id/subscribe", requireAuth, async (req: Request, res: Response) => {
   const db = openDatabase();
   try {
     const organization = db

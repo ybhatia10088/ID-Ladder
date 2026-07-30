@@ -125,5 +125,17 @@ Milestone 4 complete: attestations drive the plan (`POST /api/cases/:id/attest`)
 per-document payment via Stripe hosted Checkout (`POST /api/cases/:id/pay`),
 and an org subscription (`POST /api/organizations/:id/subscribe`).
 
-Not built yet: Auth0 wiring (`attested_by_user_id` is still `"demo-user"`), a
-Stripe webhook, and any UI.
+Milestone 5 complete: Auth0 Universal Login via `@auth0/auth0-react`, and the
+single-screen case view.
+
+Auth0 notes:
+- Auth0 config is served at runtime from `GET /api/config`, so the callback URL
+  comes from `APP_BASE_URL` (or the request origin) and is never hardcoded and
+  never baked into the bundle at build time.
+- The API validates the browser's access token against Auth0's `/userinfo`
+  rather than verifying a JWT locally, which avoids a JWKS dependency.
+- Auth0 Organizations is not configured on this tenant, so membership lives in
+  `user_organizations`. The signed-in user's organization — never the case's —
+  supplies the standing the resolver uses.
+
+Not built yet: a Stripe webhook (payments settle on the browser redirect only).
