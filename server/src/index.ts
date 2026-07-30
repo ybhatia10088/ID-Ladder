@@ -48,14 +48,17 @@ type DatabaseHandle = ReturnType<typeof openDatabase>;
 function buildPlan(
   db: DatabaseHandle,
   caseId: string,
+  organizationId: string,
   standingJurisdictions: string[],
 ): Plan | null {
+  // Scoped by organization: a case id belonging to someone else must be
+  // indistinguishable from one that does not exist.
   const caseRecord = db
     .prepare(
       `SELECT id, organization_id, birth_jurisdiction, current_jurisdiction, goal_document_id
-       FROM cases WHERE id = ?`,
+       FROM cases WHERE id = ? AND organization_id = ?`,
     )
-    .get(caseId) as CaseRow | undefined;
+    .get(caseId, organizationId) as CaseRow | undefined;
 
   if (!caseRecord) {
     return null;
@@ -116,7 +119,7 @@ app.get("/api/me", requireAuth, (req, res) => {
   res.json({ user: req.user, organization: req.organization });
 });
 
-app.get("/api/cases", requireAuth, (_req, res) => {
+app.get("/api/cases", requireAuth, (req, res) => {
   const db = openDatabase();
   try {
     res.json({
@@ -126,9 +129,10 @@ app.get("/api/cases", requireAuth, (_req, res) => {
                   c.goal_document_id, d.name AS goal_document_name
            FROM cases c
            JOIN documents d ON d.id = c.goal_document_id
-           ORDER BY c.id`,
+           WHERE c.organization_id = ?
+           ORDER BY c.client_ref`,
         )
-        .all(),
+        .all(req.organization!.id),
     });
   } finally {
     db.close();
@@ -138,7 +142,12 @@ app.get("/api/cases", requireAuth, (_req, res) => {
 app.get("/api/cases/:id/plan", requireAuth, (req, res) => {
   const db = openDatabase();
   try {
-    const plan = buildPlan(db, req.params.id, req.organization!.standing_jurisdictions);
+    const plan = buildPlan(
+      db,
+      req.params.id,
+      req.organization!.id,
+      req.organization!.standing_jurisdictions,
+    );
     if (!plan) {
       res.status(404).json({ error: "Case not found" });
       return;
@@ -160,8 +169,10 @@ app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
   const db = openDatabase();
   try {
     const caseRecord = db
-      .prepare(`SELECT id, organization_id FROM cases WHERE id = ?`)
-      .get(req.params.id) as Pick<CaseRow, "id" | "organization_id"> | undefined;
+      .prepare(`SELECT id, organization_id FROM cases WHERE id = ? AND organization_id = ?`)
+      .get(req.params.id, req.organization!.id) as
+      | Pick<CaseRow, "id" | "organization_id">
+      | undefined;
 
     if (!caseRecord) {
       res.status(404).json({ error: "Case not found" });
@@ -235,7 +246,7 @@ app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
       );
     }
 
-    res.json(buildPlan(db, caseRecord.id, standing));
+    res.json(buildPlan(db, caseRecord.id, organization.id, standing));
   } finally {
     db.close();
   }
@@ -249,7 +260,12 @@ app.post("/api/cases/:id/attest", requireAuth, (req, res) => {
 app.post("/api/cases/:id/pay", requireAuth, async (req: Request, res: Response) => {
   const db = openDatabase();
   try {
-    const plan = buildPlan(db, req.params.id, req.organization!.standing_jurisdictions);
+    const plan = buildPlan(
+      db,
+      req.params.id,
+      req.organization!.id,
+      req.organization!.standing_jurisdictions,
+    );
     if (!plan) {
       res.status(404).json({ error: "Case not found" });
       return;
@@ -377,14 +393,12 @@ app.get("/api/payments/return", async (req: Request, res: Response) => {
 app.post("/api/organizations/:id/subscribe", requireAuth, async (req: Request, res: Response) => {
   const db = openDatabase();
   try {
-    const organization = db
-      .prepare(`SELECT id, name FROM organizations WHERE id = ?`)
-      .get(req.params.id) as { id: string; name: string } | undefined;
-
-    if (!organization) {
-      res.status(404).json({ error: "Organization not found" });
+    // You may only subscribe your own organization.
+    if (req.params.id !== req.organization!.id) {
+      res.status(403).json({ error: "You can only manage your own organization" });
       return;
     }
+    const organization = req.organization!;
 
     const base = baseUrl(req);
     const session = await getStripe().checkout.sessions.create({

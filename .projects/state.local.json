@@ -47,24 +47,12 @@
     },
     "idladder-live": {
       "configuration": {
-        "name": "ID-Ladder",
-        "callbacks": [
-          "https://id-ladder-production.up.railway.app",
-          "https://id-ladder-production.up.railway.app/callback",
-          "http://localhost:3100",
-          "http://localhost:3100/callback"
-        ],
-        "allowed_logout_urls": [
-          "https://id-ladder-production.up.railway.app",
-          "http://localhost:3100"
-        ],
-        "web_origins": [
-          "https://id-ladder-production.up.railway.app",
-          "http://localhost:3100"
-        ]
+        "name": "id-ladder",
+        "app_type": "spa",
+        "token_endpoint_auth_method": "none"
       },
       "createdAt": "2026-07-30T21:44:01.970Z",
-      "lastRevealedAt": "2026-07-30T21:44:02.159Z",
+      "lastRevealedAt": "2026-07-30T22:53:55.161Z",
       "lastStatus": "complete",
       "name": "idladder-live",
       "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",

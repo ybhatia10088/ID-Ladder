@@ -9,6 +9,8 @@
  * Organization membership comes from our own `user_organizations` table rather
  * than Auth0 Organizations, which is not configured on this tenant.
  */
+import { randomUUID } from "node:crypto";
+
 import type { NextFunction, Request, Response } from "express";
 
 import { openDatabase } from "./db/index.js";
@@ -78,13 +80,154 @@ function parseStanding(raw: string | undefined): string[] {
   }
 }
 
+type DatabaseHandle = ReturnType<typeof openDatabase>;
+
 /**
- * Resolves the organization this user acts for, creating the membership on
- * first sign-in.
+ * The organization whose cases are cloned for every new user.
  *
- * The default organization is read from configuration or from the first row in
- * the table — never a hardcoded id — so the demo works without manual setup.
+ * Read from configuration or from the first row — never a hardcoded id. Once
+ * users get their own organizations, nobody is a member of the template org,
+ * so the seeded cases become an invisible blueprint rather than shared state.
  */
+function templateOrganizationId(db: DatabaseHandle): string | null {
+  const configured = process.env.TEMPLATE_ORGANIZATION_ID ?? process.env.DEFAULT_ORGANIZATION_ID;
+  if (configured) {
+    const match = db.prepare(`SELECT id FROM organizations WHERE id = ?`).get(configured) as
+      | { id: string }
+      | undefined;
+    if (match) {
+      return match.id;
+    }
+  }
+
+  // Prefer an organization nobody is a member of: that is a seeded template,
+  // never a user's private workspace. Ordering by id alone would start
+  // cloning from real users' data once enough workspaces exist.
+  const template = db
+    .prepare(
+      `SELECT o.id FROM organizations o
+       WHERE NOT EXISTS (SELECT 1 FROM user_organizations u WHERE u.organization_id = o.id)
+       ORDER BY o.id LIMIT 1`,
+    )
+    .get() as { id: string } | undefined;
+  if (template) {
+    return template.id;
+  }
+
+  const first = db.prepare(`SELECT id FROM organizations ORDER BY id LIMIT 1`).get() as
+    | { id: string }
+    | undefined;
+  return first?.id ?? null;
+}
+
+function displayNameFor(user: AuthenticatedUser): string {
+  return user.name ?? user.email ?? user.sub;
+}
+
+/**
+ * Provisions a private workspace on first sign-in: a fresh organization for
+ * this user, plus a clone of every template case with new ids.
+ *
+ * Each user therefore gets their own organization, their own cases, and — as a
+ * consequence of the cases being new rows — their own attestations and
+ * payments. Nobody can mutate anybody else's demo.
+ *
+ * Attestations and payments are deliberately NOT cloned: a new workspace
+ * starts from the untouched state, which is the whole point of the demo.
+ */
+export function provisionWorkspace(
+  db: DatabaseHandle,
+  user: AuthenticatedUser,
+): string | null {
+  const templateId = templateOrganizationId(db);
+  if (!templateId) {
+    return null;
+  }
+
+  const template = db
+    .prepare(`SELECT id, standing_jurisdictions FROM organizations WHERE id = ?`)
+    .get(templateId) as { id: string; standing_jurisdictions: string } | undefined;
+
+  if (!template) {
+    return null;
+  }
+
+  const templateCases = db
+    .prepare(
+      `SELECT id, client_ref, birth_jurisdiction, current_jurisdiction, goal_document_id
+       FROM cases WHERE organization_id = ? ORDER BY id`,
+    )
+    .all(templateId) as {
+    id: string;
+    client_ref: string;
+    birth_jurisdiction: string;
+    current_jurisdiction: string;
+    goal_document_id: string;
+  }[];
+
+  const insertOrganization = db.prepare(
+    `INSERT INTO organizations (id, auth0_org_id, name, standing_jurisdictions)
+     VALUES (?, NULL, ?, ?)`,
+  );
+  const insertCase = db.prepare(
+    `INSERT INTO cases (id, organization_id, client_ref, birth_jurisdiction,
+                        current_jurisdiction, goal_document_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const templateHoldings = db.prepare(
+    `SELECT document_id FROM case_holdings WHERE case_id = ?`,
+  );
+  const insertHolding = db.prepare(
+    `INSERT INTO case_holdings (case_id, document_id) VALUES (?, ?)`,
+  );
+  const insertMembership = db.prepare(
+    `INSERT INTO user_organizations (auth0_user_id, email, organization_id, created_at)
+     VALUES (?, ?, ?, ?)`,
+  );
+
+  return db.transaction((): string | null => {
+    // Re-check inside the transaction: two requests can race on first sign-in.
+    const existing = db
+      .prepare(`SELECT organization_id FROM user_organizations WHERE auth0_user_id = ?`)
+      .get(user.sub) as { organization_id: string } | undefined;
+    if (existing) {
+      return existing.organization_id;
+    }
+
+    const now = new Date().toISOString();
+    const organizationId = `org_${randomUUID()}`;
+
+    // Standing is inherited from the template (California), so a cloned
+    // workspace reproduces the cross-jurisdiction demo exactly.
+    insertOrganization.run(
+      organizationId,
+      `${displayNameFor(user)} · demo workspace`,
+      template.standing_jurisdictions,
+    );
+
+    for (const templateCase of templateCases) {
+      const caseId = `case_${randomUUID()}`;
+      insertCase.run(
+        caseId,
+        organizationId,
+        templateCase.client_ref,
+        templateCase.birth_jurisdiction,
+        templateCase.current_jurisdiction,
+        templateCase.goal_document_id,
+        now,
+      );
+
+      for (const holding of templateHoldings.all(templateCase.id) as { document_id: string }[]) {
+        insertHolding.run(caseId, holding.document_id);
+      }
+    }
+
+    insertMembership.run(user.sub, user.email ?? null, organizationId, now);
+    return organizationId;
+  })();
+}
+
+/** Resolves the organization this user acts for, provisioning it if needed. */
 function resolveOrganization(user: AuthenticatedUser): RequestOrganization | null {
   const db = openDatabase();
   try {
@@ -92,30 +235,9 @@ function resolveOrganization(user: AuthenticatedUser): RequestOrganization | nul
       .prepare(`SELECT organization_id FROM user_organizations WHERE auth0_user_id = ?`)
       .get(user.sub) as { organization_id: string } | undefined;
 
-    let organizationId = membership?.organization_id;
-
+    const organizationId = membership?.organization_id ?? provisionWorkspace(db, user);
     if (!organizationId) {
-      const fallback = process.env.DEFAULT_ORGANIZATION_ID
-        ? (db
-            .prepare(`SELECT id FROM organizations WHERE id = ?`)
-            .get(process.env.DEFAULT_ORGANIZATION_ID) as { id: string } | undefined)
-        : undefined;
-
-      const first = fallback
-        ? fallback
-        : (db.prepare(`SELECT id FROM organizations ORDER BY id LIMIT 1`).get() as
-            | { id: string }
-            | undefined);
-
-      if (!first) {
-        return null;
-      }
-
-      organizationId = first.id;
-      db.prepare(
-        `INSERT OR IGNORE INTO user_organizations (auth0_user_id, email, organization_id, created_at)
-         VALUES (?, ?, ?, ?)`,
-      ).run(user.sub, user.email ?? null, organizationId, new Date().toISOString());
+      return null;
     }
 
     const organization = db
